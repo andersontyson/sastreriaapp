@@ -20,7 +20,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'sastreria.db');
     return await openDatabase(
       path,
-      version: 2, // Incremented version for schema changes
+      version: 3, // Incremented to version 3 for activation fields
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -57,36 +57,40 @@ class DatabaseHelper {
       CREATE TABLE configuracion (
         id INTEGER PRIMARY KEY DEFAULT 1,
         nombreNegocio TEXT,
-        comisionGeneral REAL
+        comisionGeneral REAL,
+        isActivated INTEGER DEFAULT 0,
+        activationDate TEXT,
+        activationCode TEXT
       )
     ''');
 
-    // Initial config
+    // Initial config (not activated)
     await db.insert('configuracion', {
       'id': 1,
-      'nombreNegocio': 'Sastrería Profesional',
-      'comisionGeneral': 10.0
+      'nombreNegocio': 'Mi Sastrería',
+      'comisionGeneral': 10.0,
+      'isActivated': 0
     });
 
-    // Initial owner
-    final now = DateTime.now().toIso8601String();
-    await db.insert('sastres', {
-      'id': const Uuid().v4(),
-      'nombre': 'Juan (Propietario)',
-      'esDueno': 1,
-      'estaActivo': 1,
-      'createdAt': now,
-      'comisionFija': 0.0
-    });
+    // We don't create an initial owner here anymore,
+    // it will be created during activation.
+    // However, for existing systems, we might need to handle it.
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Simplest way for this task: drop and recreate
       await db.execute('DROP TABLE IF EXISTS sastres');
       await db.execute('DROP TABLE IF EXISTS cobros');
       await db.execute('DROP TABLE IF EXISTS configuracion');
       await _onCreate(db, newVersion);
+    } else if (oldVersion == 2) {
+      // Add new columns to configuracion for version 3
+      await db.execute('ALTER TABLE configuracion ADD COLUMN isActivated INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE configuracion ADD COLUMN activationDate TEXT');
+      await db.execute('ALTER TABLE configuracion ADD COLUMN activationCode TEXT');
+
+      // If there are already sastres, we might assume it was "activated" or just let it be.
+      // But according to rules, it must show ActivationPage if isActivated is false.
     }
   }
 }

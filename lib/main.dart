@@ -7,12 +7,12 @@ import 'data/repositories/config_repository_impl.dart';
 import 'data/repositories/sastre_repository_impl.dart';
 import 'presentation/providers/shop_provider.dart';
 import 'presentation/pages/dashboard_page.dart';
-// Temporary placeholders for other pages to avoid compilation errors
 import 'presentation/pages/nuevo_cobro_page.dart';
 import 'presentation/pages/lista_cobros_page.dart';
 import 'presentation/pages/cierre_page.dart';
 import 'presentation/pages/admin_page.dart';
 import 'presentation/pages/reportes_page.dart';
+import 'presentation/pages/activation_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,15 +44,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<ShopProvider>(context, listen: false);
+    final bool isActivated = provider.config?.isActivated ?? false;
+
     return MaterialApp(
       title: 'Sastrería App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: isActivated ? '/' : '/activation',
       routes: {
         '/': (context) => const DashboardPage(),
+        '/activation': (context) => const ActivationPage(),
         '/nuevo-cobro': (context) => const NuevoCobroPage(),
         '/lista-cobros': (context) => const ListaCobrosPage(),
         '/cierre': (context) => const CierrePage(),

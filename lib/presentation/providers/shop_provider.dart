@@ -6,6 +6,7 @@ import '../../domain/repositories/cobro_repository.dart';
 import '../../domain/repositories/config_repository.dart';
 import '../../domain/repositories/sastre_repository.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 class ShopProvider with ChangeNotifier {
   final SastreRepository sastreRepo;
@@ -174,5 +175,57 @@ class ShopProvider with ChangeNotifier {
 
   Future<List<Cobro>> getAllCobros() async {
     return await cobroRepo.getAllCobros();
+  }
+
+  // --- ACTIVATION MODULE ---
+
+  String? validarCodigoActivacion(String codigo) {
+    if (codigo.isEmpty) return 'El código es obligatorio';
+
+    // Format: SAST-yyyyMMdd-XXXX
+    final regex = RegExp(r'^SAST-(\d{8})-.+$');
+    final match = regex.firstMatch(codigo);
+
+    if (match == null) return 'Formato de código inválido (SAST-yyyyMMdd-XXXX)';
+
+    final fechaCodigoStr = match.group(1)!;
+    final fechaActualStr = DateFormat('yyyyMMdd').format(DateTime.now());
+
+    if (fechaCodigoStr != fechaActualStr) {
+      return 'La fecha del código no coincide con la fecha actual';
+    }
+
+    return null;
+  }
+
+  Future<void> activarSistema({
+    required String nombreNegocio,
+    required String nombreDueno,
+    required String codigoActivacion,
+  }) async {
+    // 1. Create Owner Sastre
+    final owner = Sastre(
+      id: const Uuid().v4(),
+      nombre: nombreDueno,
+      esDueno: true,
+      estaActivo: true,
+      createdAt: DateTime.now(),
+      comisionFija: 0.0,
+    );
+    await sastreRepo.addSastre(owner);
+
+    // 2. Update Configuration
+    final updatedConfig = (_config ?? Configuracion(nombreNegocio: nombreNegocio, comisionGeneral: 10.0)).copyWith(
+      nombreNegocio: nombreNegocio,
+      isActivated: true,
+      activationDate: DateTime.now(),
+      activationCode: codigoActivacion,
+    );
+
+    await configRepo.saveConfig(updatedConfig);
+    _config = updatedConfig;
+
+    await loadSastres();
+    notifyListeners();
   }
 }
