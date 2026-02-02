@@ -41,7 +41,26 @@ class DashboardPage extends StatelessWidget {
             _buildSastresGrid(provider, currencyFormat),
             const SizedBox(height: 32),
             _buildActionButtons(context),
+            const SizedBox(height: 24),
+            _buildReportButton(context),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => Navigator.pushNamed(context, '/reportes'),
+        icon: const Icon(Icons.history_outlined),
+        label: const Text('Ver Reportes Históricos'),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: Colors.orange.shade800,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
@@ -85,7 +104,7 @@ class DashboardPage extends StatelessWidget {
         itemCount: activeSastres.length,
         itemBuilder: (context, index) {
           final sastre = activeSastres[index];
-          double monto = provider.getNetoSastre(sastre.id);
+          double monto = provider.getNetoSastreHoy(sastre.id);
           if (sastre.esDueno) {
             monto += provider.totalComisionesHoy;
           }

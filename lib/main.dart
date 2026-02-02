@@ -12,6 +12,7 @@ import 'presentation/pages/nuevo_cobro_page.dart';
 import 'presentation/pages/lista_cobros_page.dart';
 import 'presentation/pages/cierre_page.dart';
 import 'presentation/pages/admin_page.dart';
+import 'presentation/pages/reportes_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +57,7 @@ class MyApp extends StatelessWidget {
         '/lista-cobros': (context) => const ListaCobrosPage(),
         '/cierre': (context) => const CierrePage(),
         '/admin': (context) => const AdminPage(),
+        '/reportes': (context) => const ReportesPage(),
       },
     );
   }

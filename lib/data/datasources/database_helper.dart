@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -19,8 +20,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'sastreria.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Incremented version for schema changes
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -30,8 +32,9 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         nombre TEXT,
         esDueno INTEGER,
-        comisionFija REAL,
-        estaActivo INTEGER
+        estaActivo INTEGER,
+        createdAt TEXT,
+        comisionFija REAL
       )
     ''');
 
@@ -39,12 +42,14 @@ class DatabaseHelper {
       CREATE TABLE cobros (
         id TEXT PRIMARY KEY,
         sastreId TEXT,
-        monto REAL,
-        cliente TEXT,
-        prenda TEXT,
-        fechaHora TEXT,
+        montoTotal REAL,
+        comisionPorcentaje REAL,
         comisionMonto REAL,
-        netoSastre REAL
+        netoSastre REAL,
+        fecha TEXT,
+        esCierre INTEGER,
+        cliente TEXT,
+        prenda TEXT
       )
     ''');
 
@@ -56,18 +61,32 @@ class DatabaseHelper {
       )
     ''');
 
-    // Initial config and default owner
+    // Initial config
     await db.insert('configuracion', {
-      'nombreNegocio': 'Sastrería Demo',
-      'comisionGeneral': 0.0
+      'id': 1,
+      'nombreNegocio': 'Sastrería Profesional',
+      'comisionGeneral': 10.0
     });
 
+    // Initial owner
+    final now = DateTime.now().toIso8601String();
     await db.insert('sastres', {
-      'id': 'juan-propietario',
+      'id': const Uuid().v4(),
       'nombre': 'Juan (Propietario)',
       'esDueno': 1,
-      'comisionFija': null,
-      'estaActivo': 1
+      'estaActivo': 1,
+      'createdAt': now,
+      'comisionFija': 0.0
     });
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Simplest way for this task: drop and recreate
+      await db.execute('DROP TABLE IF EXISTS sastres');
+      await db.execute('DROP TABLE IF EXISTS cobros');
+      await db.execute('DROP TABLE IF EXISTS configuracion');
+      await _onCreate(db, newVersion);
+    }
   }
 }

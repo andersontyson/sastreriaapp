@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../domain/entities/sastre.dart';
 import '../providers/shop_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -34,11 +35,14 @@ class ListaCobrosPage extends StatelessWidget {
                     DataColumn(label: Text('Acciones')),
                   ],
                   rows: provider.cobrosHoy.reversed.map((cobro) {
-                    final sastre = provider.sastres.firstWhere((s) => s.id == cobro.sastreId);
+                    final sastre = provider.sastres.firstWhere(
+                      (s) => s.id == cobro.sastreId,
+                      orElse: () => Sastre(id: '', nombre: 'Eliminado', esDueno: false, createdAt: DateTime.now())
+                    );
                     return DataRow(cells: [
-                      DataCell(Text(timeFormat.format(cobro.fechaHora))),
+                      DataCell(Text(timeFormat.format(cobro.fecha))),
                       DataCell(Text(sastre.nombre)),
-                      DataCell(Text(currencyFormat.format(cobro.monto))),
+                      DataCell(Text(currencyFormat.format(cobro.montoTotal))),
                       DataCell(Text(currencyFormat.format(cobro.comisionMonto), style: const TextStyle(color: Colors.red))),
                       DataCell(Text(currencyFormat.format(cobro.netoSastre), style: const TextStyle(color: Colors.green))),
                       DataCell(

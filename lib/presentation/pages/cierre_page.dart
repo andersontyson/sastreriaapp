@@ -21,7 +21,7 @@ class CierrePage extends StatelessWidget {
             ...provider.sastres.where((s) => s.estaActivo).map((sastre) {
               final generado = provider.cobrosHoy
                   .where((c) => c.sastreId == sastre.id)
-                  .fold(0.0, (sum, c) => sum + c.monto);
+                  .fold(0.0, (sum, c) => sum + c.montoTotal);
               final comision = provider.cobrosHoy
                   .where((c) => c.sastreId == sastre.id)
                   .fold(0.0, (sum, c) => sum + c.comisionMonto);

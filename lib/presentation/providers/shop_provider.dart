@@ -28,37 +28,42 @@ class ShopProvider with ChangeNotifier {
 
   Future<void> loadInitialData() async {
     _config = await configRepo.getConfig();
+    await loadSastres();
+    await loadCobrosHoy();
+    notifyListeners();
+  }
+
+  Future<void> loadSastres() async {
     _sastres = await sastreRepo.getSastres();
+    notifyListeners();
+  }
+
+  Future<void> loadCobrosHoy() async {
     _cobrosHoy = await cobroRepo.getCobrosDelDia(DateTime.now());
     notifyListeners();
   }
 
   double get totalCobradoHoy {
-    return _cobrosHoy.fold(0, (sum, item) => sum + item.monto);
+    return _cobrosHoy.fold(0, (sum, item) => sum + item.montoTotal);
   }
 
   double get totalComisionesHoy {
     return _cobrosHoy.fold(0, (sum, item) => sum + item.comisionMonto);
   }
 
-  double getNetoSastre(String sastreId) {
+  double getNetoSastreHoy(String sastreId) {
     return _cobrosHoy
         .where((c) => c.sastreId == sastreId)
         .fold(0, (sum, item) => sum + item.netoSastre);
   }
 
-  Future<void> addCobro({
+  Future<void> crearCobro({
     required String sastreId,
     required double monto,
     String? cliente,
     String? prenda,
   }) async {
     final sastre = _sastres.firstWhere((s) => s.id == sastreId);
-    // Si el sastre es dueño, la comisión es 0 (él se lleva todo o su parte neta es el total)
-    // Pero según el HTML, el dueño recibe comisión de otros.
-    // Si el dueño hace un trabajo, ¿se descuenta comisión a sí mismo?
-    // En el HTML: $('total-juan').textContent = formatearDinero(acumNeto.Juan + totalComision);
-    // Así que el dueño recibe su neto + todas las comisiones.
     
     double comisionPorcentaje = 0;
     if (!sastre.esDueno) {
@@ -71,29 +76,43 @@ class ShopProvider with ChangeNotifier {
     final nuevoCobro = Cobro(
       id: const Uuid().v4(),
       sastreId: sastreId,
-      monto: monto,
-      cliente: cliente,
-      prenda: prenda,
-      fechaHora: DateTime.now(),
+      montoTotal: monto,
+      comisionPorcentaje: comisionPorcentaje,
       comisionMonto: comisionMonto,
       netoSastre: netoSastre,
+      fecha: DateTime.now(),
+      esCierre: false,
+      cliente: cliente,
+      prenda: prenda,
     );
 
     await cobroRepo.addCobro(nuevoCobro);
-    _cobrosHoy = await cobroRepo.getCobrosDelDia(DateTime.now());
-    notifyListeners();
+    await loadCobrosHoy();
+  }
+
+  // Alias for backward compatibility or UI convenience
+  Future<void> addCobro({
+    required String sastreId,
+    required double monto,
+    String? cliente,
+    String? prenda,
+  }) async {
+    await crearCobro(sastreId: sastreId, monto: monto, cliente: cliente, prenda: prenda);
   }
 
   Future<void> deleteCobro(String id) async {
     await cobroRepo.deleteCobro(id);
-    _cobrosHoy = await cobroRepo.getCobrosDelDia(DateTime.now());
-    notifyListeners();
+    await loadCobrosHoy();
   }
 
+  Future<void> cerrarDia() async {
+    await cobroRepo.marcarCierreDelDia(DateTime.now());
+    await loadCobrosHoy();
+  }
+
+  // Alias for UI
   Future<void> resetDay() async {
-    await cobroRepo.clearCobrosDelDia(DateTime.now());
-    _cobrosHoy = [];
-    notifyListeners();
+    await cerrarDia();
   }
 
   Future<void> updateConfig(Configuracion newConfig) async {
@@ -108,14 +127,11 @@ class ShopProvider with ChangeNotifier {
       nombre: nombre,
       esDueno: esDueno,
       comisionFija: comision,
+      createdAt: DateTime.now(),
+      estaActivo: true,
     );
     await sastreRepo.addSastre(sastre);
-    _sastres = await sastreRepo.getSastres();
-    notifyListeners();
-  }
-
-  Future<List<Cobro>> getAllCobros() async {
-    return await cobroRepo.getAllCobros();
+    await loadSastres();
   }
 
   Future<void> toggleSastreActivo(String id) async {
@@ -128,10 +144,35 @@ class ShopProvider with ChangeNotifier {
         esDueno: s.esDueno,
         comisionFija: s.comisionFija,
         estaActivo: !s.estaActivo,
+        createdAt: s.createdAt,
       );
       await sastreRepo.updateSastre(updated);
-      _sastres = await sastreRepo.getSastres();
-      notifyListeners();
+      await loadSastres();
     }
+  }
+
+  // Report methods
+  Future<double> getTotalesPorFecha(DateTime fecha) async {
+    return await cobroRepo.getTotalPorDia(fecha);
+  }
+
+  Future<Map<String, double>> getTotalesPorSastre(DateTime inicio, DateTime fin) async {
+    return await cobroRepo.getTotalPorSastre(inicio, fin);
+  }
+
+  Future<double> getTotalesHistoricos() async {
+    return await cobroRepo.getTotalHistorico();
+  }
+
+  Future<double> getComisionesAcumuladas(DateTime inicio, DateTime fin) async {
+    return await cobroRepo.getComisionesAcumuladas(inicio, fin);
+  }
+
+  Future<List<Cobro>> getCobrosPorRango(DateTime inicio, DateTime fin) async {
+    return await cobroRepo.getCobrosPorRango(inicio, fin);
+  }
+
+  Future<List<Cobro>> getAllCobros() async {
+    return await cobroRepo.getAllCobros();
   }
 }
