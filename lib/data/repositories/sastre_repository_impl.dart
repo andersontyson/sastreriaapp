@@ -1,7 +1,6 @@
 import '../../domain/entities/sastre.dart';
 import '../../domain/repositories/sastre_repository.dart';
 import '../datasources/database_helper.dart';
-import '../models/sastre_model.dart';
 
 class SastreRepositoryImpl implements SastreRepository {
   final DatabaseHelper dbHelper;
@@ -12,19 +11,13 @@ class SastreRepositoryImpl implements SastreRepository {
   Future<List<Sastre>> getSastres() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('sastres');
-    return List.generate(maps.length, (i) => SastreModel.fromMap(maps[i]));
+    return List.generate(maps.length, (i) => Sastre.fromMap(maps[i]));
   }
 
   @override
   Future<void> addSastre(Sastre sastre) async {
     final db = await dbHelper.database;
-    await db.insert('sastres', SastreModel(
-      id: sastre.id,
-      nombre: sastre.nombre,
-      esDueno: sastre.esDueno,
-      comisionFija: sastre.comisionFija,
-      estaActivo: sastre.estaActivo,
-    ).toMap());
+    await db.insert('sastres', sastre.toMap());
   }
 
   @override
@@ -32,13 +25,7 @@ class SastreRepositoryImpl implements SastreRepository {
     final db = await dbHelper.database;
     await db.update(
       'sastres',
-      SastreModel(
-        id: sastre.id,
-        nombre: sastre.nombre,
-        esDueno: sastre.esDueno,
-        comisionFija: sastre.comisionFija,
-        estaActivo: sastre.estaActivo,
-      ).toMap(),
+      sastre.toMap(),
       where: 'id = ?',
       whereArgs: [sastre.id],
     );
@@ -48,5 +35,19 @@ class SastreRepositoryImpl implements SastreRepository {
   Future<void> deleteSastre(String id) async {
     final db = await dbHelper.database;
     await db.delete('sastres', where: 'id = ?', whereArgs: [id]);
+  }
+
+  @override
+  Future<Sastre?> getSastreById(String id) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'sastres',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return Sastre.fromMap(maps.first);
+    }
+    return null;
   }
 }

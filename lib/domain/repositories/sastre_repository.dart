@@ -5,4 +5,5 @@ abstract class SastreRepository {
   Future<void> addSastre(Sastre sastre);
   Future<void> updateSastre(Sastre sastre);
   Future<void> deleteSastre(String id);
+  Future<Sastre?> getSastreById(String id);
 }
