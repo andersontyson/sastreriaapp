@@ -5,6 +5,7 @@ import 'data/datasources/database_helper.dart';
 import 'data/repositories/cobro_repository_impl.dart';
 import 'data/repositories/config_repository_impl.dart';
 import 'data/repositories/sastre_repository_impl.dart';
+import 'services/printing_service.dart';
 import 'presentation/providers/shop_provider.dart';
 import 'presentation/pages/dashboard_page.dart';
 import 'presentation/pages/nuevo_cobro_page.dart';
@@ -22,11 +23,13 @@ void main() async {
   final sastreRepo = SastreRepositoryImpl(dbHelper);
   final cobroRepo = CobroRepositoryImpl(dbHelper);
   final configRepo = ConfigRepositoryImpl(dbHelper);
+  final printingService = PrintingService();
 
   final shopProvider = ShopProvider(
     sastreRepo: sastreRepo,
     cobroRepo: cobroRepo,
     configRepo: configRepo,
+    printingService: printingService,
   );
 
   await shopProvider.loadInitialData();

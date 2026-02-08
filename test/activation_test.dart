@@ -3,9 +3,17 @@ import 'package:sastreria_app/data/datasources/database_helper.dart';
 import 'package:sastreria_app/data/repositories/cobro_repository_impl.dart';
 import 'package:sastreria_app/data/repositories/config_repository_impl.dart';
 import 'package:sastreria_app/data/repositories/sastre_repository_impl.dart';
+import 'package:sastreria_app/services/printing_service.dart';
 import 'package:sastreria_app/presentation/providers/shop_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:intl/intl.dart';
+
+class MockPrintingService extends PrintingService {
+  @override
+  Future<bool> printInvoice({required config, required sastre, required cobro}) async {
+    return true;
+  }
+}
 
 void main() {
   sqfliteFfiInit();
@@ -33,6 +41,7 @@ void main() {
       sastreRepo: SastreRepositoryImpl(dbHelper),
       cobroRepo: CobroRepositoryImpl(dbHelper),
       configRepo: ConfigRepositoryImpl(dbHelper),
+      printingService: MockPrintingService(),
     );
     await provider.loadInitialData();
   });

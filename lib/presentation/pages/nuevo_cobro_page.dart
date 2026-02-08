@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/shop_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -19,6 +20,7 @@ class _NuevoCobroPageState extends State<NuevoCobroPage> {
   String? _sastreSeleccionadoId;
   double _comisionCalculada = 0;
   double _netoCalculado = 0;
+  bool _imprimirFactura = true;
 
   @override
   void dispose() {
@@ -61,19 +63,39 @@ class _NuevoCobroPageState extends State<NuevoCobroPage> {
     }
 
     final provider = Provider.of<ShopProvider>(context, listen: false);
-    await provider.addCobro(
+
+    // Request Bluetooth permissions if printing is enabled
+    if (_imprimirFactura) {
+      await [
+        Permission.bluetooth,
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.location,
+      ].request();
+    }
+    final printSuccess = await provider.addCobro(
       sastreId: _sastreSeleccionadoId!,
       monto: double.parse(_montoController.text),
       cliente: _clienteController.text,
       prenda: _prendaController.text,
+      imprimir: _imprimirFactura,
     );
 
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cobro registrado correctamente')),
-      );
-    }
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          printSuccess
+              ? 'Cobro registrado correctamente'
+              : 'Cobro registrado, pero falló la impresión'
+        ),
+        backgroundColor: printSuccess ? null : Colors.orange.shade800,
+      ),
+    );
   }
 
   @override
@@ -134,6 +156,20 @@ class _NuevoCobroPageState extends State<NuevoCobroPage> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.checkroom),
                 ),
+              ),
+              const SizedBox(height: 24),
+
+              SwitchListTile(
+                title: const Text('Imprimir factura', style: TextStyle(fontSize: 16)),
+                subtitle: const Text('Se enviará a la impresora Bluetooth'),
+                value: _imprimirFactura,
+                onChanged: (value) {
+                  setState(() {
+                    _imprimirFactura = value;
+                  });
+                },
+                secondary: const Icon(Icons.print),
+                contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 40),
               

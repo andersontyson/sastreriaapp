@@ -5,6 +5,7 @@ import '../../domain/entities/sastre.dart';
 import '../../domain/repositories/cobro_repository.dart';
 import '../../domain/repositories/config_repository.dart';
 import '../../domain/repositories/sastre_repository.dart';
+import '../../services/printing_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
@@ -12,6 +13,7 @@ class ShopProvider with ChangeNotifier {
   final SastreRepository sastreRepo;
   final CobroRepository cobroRepo;
   final ConfigRepository configRepo;
+  final PrintingService printingService;
 
   List<Sastre> _sastres = [];
   List<Cobro> _cobrosHoy = [];
@@ -21,6 +23,7 @@ class ShopProvider with ChangeNotifier {
     required this.sastreRepo,
     required this.cobroRepo,
     required this.configRepo,
+    required this.printingService,
   });
 
   List<Sastre> get sastres => _sastres;
@@ -58,11 +61,15 @@ class ShopProvider with ChangeNotifier {
         .fold(0, (sum, item) => sum + item.netoSastre);
   }
 
-  Future<void> crearCobro({
+  /// Creates a new payment and optionally prints a receipt.
+  /// Returns true if printing was successful (or not requested),
+  /// false if printing failed.
+  Future<bool> crearCobro({
     required String sastreId,
     required double monto,
     String? cliente,
     String? prenda,
+    bool imprimir = false,
   }) async {
     final sastre = _sastres.firstWhere((s) => s.id == sastreId);
     
@@ -89,16 +96,32 @@ class ShopProvider with ChangeNotifier {
 
     await cobroRepo.addCobro(nuevoCobro);
     await loadCobrosHoy();
+
+    if (imprimir && _config != null && sastre.estaActivo) {
+      return await printingService.printInvoice(
+        config: _config!,
+        sastre: sastre,
+        cobro: nuevoCobro,
+      );
+    }
+    return true;
   }
 
   // Alias for backward compatibility or UI convenience
-  Future<void> addCobro({
+  Future<bool> addCobro({
     required String sastreId,
     required double monto,
     String? cliente,
     String? prenda,
+    bool imprimir = false,
   }) async {
-    await crearCobro(sastreId: sastreId, monto: monto, cliente: cliente, prenda: prenda);
+    return await crearCobro(
+      sastreId: sastreId,
+      monto: monto,
+      cliente: cliente,
+      prenda: prenda,
+      imprimir: imprimir,
+    );
   }
 
   Future<void> deleteCobro(String id) async {
