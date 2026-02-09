@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/shop_provider.dart';
 import 'package:intl/intl.dart';
+import '../../services/printing_service.dart';
+import '../../domain/entities/cobro.dart';
 
 class NuevoCobroPage extends StatefulWidget {
   const NuevoCobroPage({super.key});
@@ -61,18 +63,52 @@ class _NuevoCobroPageState extends State<NuevoCobroPage> {
     }
 
     final provider = Provider.of<ShopProvider>(context, listen: false);
+    final sastre = provider.sastres.firstWhere((s) => s.id == _sastreSeleccionadoId);
+    final monto = double.parse(_montoController.text);
+    final cliente = _clienteController.text;
+    final prenda = _prendaController.text;
+
+    // Guardar en SQLite
     await provider.addCobro(
       sastreId: _sastreSeleccionadoId!,
-      monto: double.parse(_montoController.text),
-      cliente: _clienteController.text,
-      prenda: _prendaController.text,
+      monto: monto,
+      cliente: cliente,
+      prenda: prenda,
+    );
+
+    // Intentar imprimir
+    final temporaryCobro = Cobro(
+      id: 'temp',
+      sastreId: _sastreSeleccionadoId!,
+      montoTotal: monto,
+      comisionPorcentaje: 0, // No es crítico para la factura impresa según el diseño
+      comisionMonto: _comisionCalculada,
+      netoSastre: _netoCalculado,
+      fecha: DateTime.now(),
+      cliente: cliente,
+      prenda: prenda,
+    );
+
+    final printSuccess = await PrintingService.printInvoice(
+      cobro: temporaryCobro,
+      sastre: sastre,
+      nombreNegocio: provider.config?.nombreNegocio ?? 'Sastrería',
     );
 
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cobro registrado correctamente')),
-      );
+      if (printSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cobro registrado e impreso correctamente')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cobro guardado, pero no se pudo imprimir'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
