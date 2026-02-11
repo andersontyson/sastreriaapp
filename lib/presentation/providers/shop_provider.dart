@@ -5,6 +5,7 @@ import '../../domain/entities/sastre.dart';
 import '../../domain/repositories/cobro_repository.dart';
 import '../../domain/repositories/config_repository.dart';
 import '../../domain/repositories/sastre_repository.dart';
+import '../../services/printing_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
@@ -29,6 +30,15 @@ class ShopProvider with ChangeNotifier {
 
   Future<void> loadInitialData() async {
     _config = await configRepo.getConfig();
+
+    // Initialize businessDate if it's the first time
+    if (_config != null && _config!.businessDate == null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      _config = _config!.copyWith(businessDate: today);
+      await configRepo.saveConfig(_config!);
+    }
+
     await loadSastres();
     await loadCobrosHoy();
     notifyListeners();
@@ -40,7 +50,7 @@ class ShopProvider with ChangeNotifier {
   }
 
   Future<void> loadCobrosHoy() async {
-    _cobrosHoy = await cobroRepo.getCobrosDelDia(DateTime.now());
+    _cobrosHoy = await cobroRepo.getCobrosDelDia(_config?.businessDate ?? DateTime.now());
     notifyListeners();
   }
 
@@ -106,14 +116,32 @@ class ShopProvider with ChangeNotifier {
     await loadCobrosHoy();
   }
 
-  Future<void> cerrarDia() async {
-    await cobroRepo.marcarCierreDelDia(DateTime.now());
+  Future<void> cerrarDia({bool print = false}) async {
+    if (_config == null) return;
+
+    if (print) {
+      await PrintingService.printClosure(
+        cobros: _cobrosHoy,
+        sastres: _sastres,
+        nombreNegocio: _config!.nombreNegocio,
+        fecha: _config!.businessDate ?? DateTime.now(),
+      );
+    }
+
+    await cobroRepo.marcarCierreDelDia(_config!.businessDate ?? DateTime.now());
+
+    // Advance business date
+    final nextDay = (_config!.businessDate ?? DateTime.now()).add(const Duration(days: 1));
+    _config = _config!.copyWith(businessDate: nextDay);
+    await configRepo.saveConfig(_config!);
+
     await loadCobrosHoy();
+    notifyListeners();
   }
 
   // Alias for UI
-  Future<void> resetDay() async {
-    await cerrarDia();
+  Future<void> resetDay({bool print = false}) async {
+    await cerrarDia(print: print);
   }
 
   Future<void> updateConfig(Configuracion newConfig) async {

@@ -5,6 +5,7 @@ class Configuracion {
   final bool isActivated;
   final DateTime? activationDate;
   final String? activationCode;
+  final DateTime? businessDate;
 
   Configuracion({
     this.id = 1,
@@ -13,6 +14,7 @@ class Configuracion {
     this.isActivated = false,
     this.activationDate,
     this.activationCode,
+    this.businessDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class Configuracion {
       'isActivated': isActivated ? 1 : 0,
       'activationDate': activationDate?.toIso8601String(),
       'activationCode': activationCode,
+      'businessDate': businessDate?.toIso8601String(),
     };
   }
 
@@ -36,6 +39,9 @@ class Configuracion {
           ? DateTime.parse(map['activationDate'])
           : null,
       activationCode: map['activationCode'],
+      businessDate: map['businessDate'] != null
+          ? DateTime.parse(map['businessDate'])
+          : null,
     );
   }
 
@@ -45,6 +51,7 @@ class Configuracion {
     bool? isActivated,
     DateTime? activationDate,
     String? activationCode,
+    DateTime? businessDate,
   }) {
     return Configuracion(
       id: this.id,
@@ -53,6 +60,7 @@ class Configuracion {
       isActivated: isActivated ?? this.isActivated,
       activationDate: activationDate ?? this.activationDate,
       activationCode: activationCode ?? this.activationCode,
+      businessDate: businessDate ?? this.businessDate,
     );
   }
 }

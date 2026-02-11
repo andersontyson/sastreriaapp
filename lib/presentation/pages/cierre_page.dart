@@ -122,18 +122,31 @@ class CierrePage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Cerrar el día?'),
-        content: const Text('Esto reiniciará todos los contadores de hoy. Asegúrate de haber entregado el dinero.'),
+        content: const Text('Esto avanzará la fecha operativa del sistema. ¿Deseas imprimir el reporte de cierre?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
             onPressed: () async {
-              await provider.resetDay();
+              Navigator.pop(context);
+              await provider.resetDay(print: false);
               if (context.mounted) {
                 Navigator.popUntil(context, ModalRoute.withName('/'));
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Día cerrado correctamente')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Día cerrado correctamente (sin impresión)')));
               }
             },
-            child: const Text('Cerrar Día', style: TextStyle(color: Colors.red)),
+            child: const Text('No imprimir', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await provider.resetDay(print: true);
+              if (context.mounted) {
+                Navigator.popUntil(context, ModalRoute.withName('/'));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Día cerrado e impreso correctamente')));
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            child: const Text('✅ Imprimir cierre'),
           ),
         ],
       ),

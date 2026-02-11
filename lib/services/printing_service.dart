@@ -146,6 +146,76 @@ class PrintingService {
     return bytes;
   }
 
+  /// Genera los bytes ESC/POS para el cierre diario
+  static List<int> _generateClosureBytes({
+    required List<Cobro> cobros,
+    required List<Sastre> sastres,
+    required String nombreNegocio,
+    required DateTime fecha,
+  }) {
+    List<int> bytes = [];
+    const esc = 27;
+    const gs = 29;
+
+    // Inicializar impresora (ESC @)
+    bytes += [esc, 64];
+
+    // Texto centrado (ESC a 1)
+    bytes += [esc, 97, 1];
+
+    // Título CIERRE DEL DÍA (Negrita y tamaño doble)
+    bytes += [gs, 33, 17];
+    bytes += utf8.encode('CIERRE DEL DÍA\n');
+    bytes += [gs, 33, 0]; // Tamaño normal
+
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    bytes += utf8.encode('Fecha: ${dateFormat.format(fecha)}\n');
+    bytes += utf8.encode('--------------------------------\n');
+
+    // Alinear a la izquierda para los detalles (ESC a 0)
+    bytes += [esc, 97, 0];
+
+    bytes += utf8.encode('--- POR SASTRE ---\n');
+
+    String money(double v) => 'RD\$ ${v.toStringAsFixed(2).padLeft(10)}';
+
+    double totalComisionDia = 0;
+
+    for (var sastre in sastres) {
+      final sastreCobros = cobros.where((c) => c.sastreId == sastre.id).toList();
+      if (sastreCobros.isEmpty) continue;
+
+      final generado = sastreCobros.fold(0.0, (sum, c) => sum + c.montoTotal);
+      final comision = sastreCobros.fold(0.0, (sum, c) => sum + c.comisionMonto);
+      final neto = generado - comision;
+
+      totalComisionDia += comision;
+
+      bytes += utf8.encode('${sastre.nombre}\n');
+      bytes += utf8.encode('Total generado: ${money(generado)}\n');
+      bytes += utf8.encode('Comisión:       ${money(comision)}\n');
+      bytes += utf8.encode('Neto entregado: ${money(neto)}\n');
+      bytes += utf8.encode('\n');
+    }
+
+    bytes += utf8.encode('--- PROPIETARIO ---\n');
+    bytes += utf8.encode('Total comisión día: ${money(totalComisionDia)}\n');
+
+    bytes += [esc, 97, 1]; // Centrado
+    bytes += utf8.encode('--------------------------------\n');
+    bytes += utf8.encode('Sistema Sastrería\n');
+    bytes += utf8.encode('Desarrollado por TYSOFTRD\n');
+
+    bytes += utf8.encode('\n\n');
+    // Corte de papel (GS V 65 3)
+    bytes += [gs, 86, 65, 3];
+
+    // Finalizar con un reset
+    bytes += [esc, 64];
+
+    return bytes;
+  }
+
   /// Realiza la impresión de la factura
   static Future<bool> printInvoice({
     required Cobro cobro,
@@ -221,6 +291,57 @@ class PrintingService {
         } catch (e) {
           debugPrint('PrintingService: Error al liberar conexión: $e');
         }
+      }
+    }
+  }
+
+  /// Realiza la impresión del cierre diario
+  static Future<bool> printClosure({
+    required List<Cobro> cobros,
+    required List<Sastre> sastres,
+    required String nombreNegocio,
+    required DateTime fecha,
+  }) async {
+    bool isConnected = false;
+    try {
+      bool hasPermission = await requestPermissions();
+      if (!hasPermission) return false;
+
+      final printers = await _printer.getBondedPrinters();
+      if (printers.isEmpty) return false;
+
+      String? macAddress = printers.first['address'] ?? printers.first['mac'];
+      if (macAddress == null) return false;
+
+      if (await _printer.isConnected) {
+        await _printer.disconnect();
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      await _printer.connect(macAddress);
+      isConnected = true;
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      final bytes = _generateClosureBytes(
+        cobros: cobros,
+        sastres: sastres,
+        nombreNegocio: nombreNegocio,
+        fecha: fecha,
+      );
+
+      await _printer.writeBytes(bytes);
+      await Future.delayed(const Duration(milliseconds: 2000));
+
+      return true;
+    } catch (e) {
+      debugPrint('PrintingService Closure Error: $e');
+      return false;
+    } finally {
+      if (isConnected) {
+        try {
+          await _printer.disconnect();
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (_) {}
       }
     }
   }
