@@ -115,22 +115,28 @@ class PrintingService {
     bytes += utf8.encode('Trabajo: ${cobro.prenda ?? "Ajuste General"}\n');
     bytes += utf8.encode('\n');
 
-    final currencyFormat = NumberFormat.currency(locale: 'es_DO', symbol: 'RD\$ ');
-    bytes += utf8.encode('Monto:     ${currencyFormat.format(cobro.montoTotal)}\n');
-    bytes += utf8.encode('Comisión:  ${currencyFormat.format(cobro.comisionMonto)}\n');
+    String money(double v) => 'RD\$ ${v.toStringAsFixed(2)}';
+
+    bytes += utf8.encode('Monto:     ${money(cobro.montoTotal)}\n');
+    bytes += utf8.encode('Comision:  ${money(cobro.comisionMonto)}\n');
+
 
     // Separador para el neto
     bytes += utf8.encode('           ----------\n');
 
     // Neto Sastre en negrita (ESC E 1)
     bytes += [esc, 69, 1];
-    bytes += utf8.encode('Neto Sastre: ${currencyFormat.format(cobro.netoSastre)}\n');
+    bytes += utf8.encode('Neto Sastre: ${money(cobro.netoSastre)}\n');
     bytes += [esc, 69, 0];
 
     bytes += [esc, 97, 1]; // Centrado
     bytes += utf8.encode('--------------------------------\n');
-    bytes += utf8.encode('GRACIAS POR SU PREFERENCIA\n\n\n');
+    bytes += utf8.encode('GRACIAS POR PREFERIRNOS\n');
+    // Mensaje de desarrollo (pequeno, centrado)
+    bytes += [esc, 33, 0]; // Texto normal (tamano pequeno)
+    bytes += utf8.encode('Desarrollado por TYSOFTRD\n');
 
+    bytes += utf8.encode('\n\n');
     // Corte de papel (GS V 65 3)
     bytes += [gs, 86, 65, 3];
 
