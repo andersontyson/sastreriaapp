@@ -163,9 +163,9 @@ class PrintingService {
     // Texto centrado (ESC a 1)
     bytes += [esc, 97, 1];
 
-    // Título CIERRE DEL DÍA (Negrita y tamaño doble)
+    // Título CIERRE DEL Dia (Negrita y tamaño doble)
     bytes += [gs, 33, 17];
-    bytes += utf8.encode('CIERRE DEL DÍA\n');
+    bytes += utf8.encode('CIERRE DEL Dia\n');
     bytes += [gs, 33, 0]; // Tamaño normal
 
     final dateFormat = DateFormat('dd/MM/yyyy');
@@ -193,17 +193,17 @@ class PrintingService {
 
       bytes += utf8.encode('${sastre.nombre}\n');
       bytes += utf8.encode('Total generado: ${money(generado)}\n');
-      bytes += utf8.encode('Comisión:       ${money(comision)}\n');
+      bytes += utf8.encode('Comision:       ${money(comision)}\n');
       bytes += utf8.encode('Neto entregado: ${money(neto)}\n');
       bytes += utf8.encode('\n');
     }
 
     bytes += utf8.encode('--- PROPIETARIO ---\n');
-    bytes += utf8.encode('Total comisión día: ${money(totalComisionDia)}\n');
+    bytes += utf8.encode('Total comision Dia: ${money(totalComisionDia)}\n');
 
     bytes += [esc, 97, 1]; // Centrado
     bytes += utf8.encode('--------------------------------\n');
-    bytes += utf8.encode('Sistema Sastrería\n');
+    bytes += utf8.encode('Sistema Sastreria\n');
     bytes += utf8.encode('Desarrollado por TYSOFTRD\n');
 
     bytes += utf8.encode('\n\n');
