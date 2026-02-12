@@ -20,7 +20,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'sastreria.db');
     return await openDatabase(
       path,
-      version: 3, // Incremented to version 3 for activation fields
+      version: 4, // Incremented to version 4 for businessDate
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -60,7 +60,8 @@ class DatabaseHelper {
         comisionGeneral REAL,
         isActivated INTEGER DEFAULT 0,
         activationDate TEXT,
-        activationCode TEXT
+        activationCode TEXT,
+        businessDate TEXT
       )
     ''');
 
@@ -88,9 +89,11 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE configuracion ADD COLUMN isActivated INTEGER DEFAULT 0');
       await db.execute('ALTER TABLE configuracion ADD COLUMN activationDate TEXT');
       await db.execute('ALTER TABLE configuracion ADD COLUMN activationCode TEXT');
-
-      // If there are already sastres, we might assume it was "activated" or just let it be.
-      // But according to rules, it must show ActivationPage if isActivated is false.
+      // Continue to version 4 upgrade if needed
+      await _onUpgrade(db, 3, newVersion);
+    } else if (oldVersion == 3) {
+      // Add businessDate column for version 4
+      await db.execute('ALTER TABLE configuracion ADD COLUMN businessDate TEXT');
     }
   }
 }
