@@ -31,10 +31,14 @@ class _AdminPageState extends State<AdminPage> {
 
   void _guardarConfig() {
     final provider = Provider.of<ShopProvider>(context, listen: false);
-    provider.updateConfig(Configuracion(
+    if (provider.config == null) return;
+
+    final nuevaConfig = provider.config!.copyWith(
       nombreNegocio: _nombreNegocioController.text,
       comisionGeneral: double.tryParse(_comisionController.text) ?? 0,
-    ));
+    );
+
+    provider.updateConfig(nuevaConfig);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/shop_provider.dart';
@@ -89,26 +90,21 @@ class _NuevoCobroPageState extends State<NuevoCobroPage> {
       prenda: prenda,
     );
 
-    final printSuccess = await PrintingService.printInvoice(
-      cobro: temporaryCobro,
-      sastre: sastre,
-      nombreNegocio: provider.config?.nombreNegocio ?? 'Sastrería',
-    );
-
     if (mounted) {
       Navigator.pop(context);
-      if (printSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cobro registrado e impreso correctamente')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cobro guardado, pero no se pudo imprimir'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+
+      // Impresión asíncrona sin bloquear la UI
+      unawaited(PrintingService.printInvoice(
+        cobro: temporaryCobro,
+        sastre: sastre,
+        nombreNegocio: provider.config?.nombreNegocio ?? 'Sastrería',
+      ).then((printSuccess) {
+        if (printSuccess) {
+          debugPrint("Impresión exitosa");
+        } else {
+          debugPrint("Fallo en la impresión");
+        }
+      }));
     }
   }
 
