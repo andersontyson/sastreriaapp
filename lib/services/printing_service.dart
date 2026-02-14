@@ -216,13 +216,23 @@ class PrintingService {
     return bytes;
   }
 
+  /// Libera la conexión manualmente si es necesario
+  static Future<void> releaseConnection() async {
+    try {
+      if (await _printer.isConnected) {
+        await _printer.disconnect();
+      }
+    } catch (e) {
+      debugPrint("PrintingService: Error al liberar conexión manual: $e");
+    }
+  }
+
   /// Realiza la impresión de la factura
   static Future<bool> printInvoice({
     required Cobro cobro,
     required Sastre sastre,
     required String nombreNegocio,
   }) async {
-    bool isConnected = false;
     try {
       // 1. Verificar permisos
       bool hasPermission = await requestPermissions();
@@ -245,54 +255,29 @@ class PrintingService {
         return false;
       }
 
-      // 4. Asegurar estado limpio antes de intentar conectar
-      // Si ya está conectado, desconectamos primero para forzar una nueva sesión
-      try {
-        if (await _printer.isConnected) {
-          await _printer.disconnect();
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-      } catch (e) {
-        debugPrint("PrintingService: Error durante limpieza pre-conexión: $e");
+      // 4. Conectar solo si NO está conectado (Estabilización JACL-P280)
+      if (!await _printer.isConnected) {
+        await _printer.connect(macAddress);
+        // Delay de estabilización tras conectar
+        await Future.delayed(const Duration(milliseconds: 800));
       }
 
-      // 5. Conectar (Un job = una conexión)
-      await _printer.connect(macAddress);
-      isConnected = true;
-
-      // Delay de estabilización para la JACL-P280
-      await Future.delayed(const Duration(milliseconds: 1000));
-
-      // 6. Generar contenido ESC/POS
+      // 5. Generar contenido ESC/POS
       final bytes = _generateBytes(
         cobro: cobro,
         sastre: sastre,
         nombreNegocio: nombreNegocio,
       );
 
-      // 7. Enviar a la impresora
+      // 6. Enviar a la impresora
       await _printer.writeBytes(bytes);
-
-      // 8. Delay técnico para asegurar que los datos salieron del buffer del SO
-      // antes de cerrar el socket físico.
-      await Future.delayed(const Duration(milliseconds: 2000));
 
       return true;
     } catch (e) {
       debugPrint('PrintingService Error: $e');
       return false;
-    } finally {
-      // 9. Liberación SEGURA del canal tras imprimir (SIEMPRE)
-      if (isConnected) {
-        try {
-          await _printer.disconnect();
-          // Pequeño delay extra para que el SO libere el socket RFCOMM
-          await Future.delayed(const Duration(milliseconds: 500));
-        } catch (e) {
-          debugPrint('PrintingService: Error al liberar conexión: $e');
-        }
-      }
     }
+    // NO desconectar automáticamente para evitar crash del stack Bluetooth
   }
 
   /// Realiza la impresión del cierre diario
@@ -302,7 +287,6 @@ class PrintingService {
     required String nombreNegocio,
     required DateTime fecha,
   }) async {
-    bool isConnected = false;
     try {
       bool hasPermission = await requestPermissions();
       if (!hasPermission) return false;
@@ -313,14 +297,10 @@ class PrintingService {
       String? macAddress = printers.first['address'] ?? printers.first['mac'];
       if (macAddress == null) return false;
 
-      if (await _printer.isConnected) {
-        await _printer.disconnect();
-        await Future.delayed(const Duration(milliseconds: 500));
+      if (!await _printer.isConnected) {
+        await _printer.connect(macAddress);
+        await Future.delayed(const Duration(milliseconds: 800));
       }
-
-      await _printer.connect(macAddress);
-      isConnected = true;
-      await Future.delayed(const Duration(milliseconds: 1000));
 
       final bytes = _generateClosureBytes(
         cobros: cobros,
@@ -330,19 +310,10 @@ class PrintingService {
       );
 
       await _printer.writeBytes(bytes);
-      await Future.delayed(const Duration(milliseconds: 2000));
-
       return true;
     } catch (e) {
       debugPrint('PrintingService Closure Error: $e');
       return false;
-    } finally {
-      if (isConnected) {
-        try {
-          await _printer.disconnect();
-          await Future.delayed(const Duration(milliseconds: 500));
-        } catch (_) {}
-      }
     }
   }
 }

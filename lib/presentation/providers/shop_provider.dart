@@ -91,7 +91,7 @@ class ShopProvider with ChangeNotifier {
       comisionPorcentaje: comisionPorcentaje,
       comisionMonto: comisionMonto,
       netoSastre: netoSastre,
-      fecha: DateTime.now(),
+      fecha: _config?.businessDate ?? DateTime.now(),
       esCierre: false,
       cliente: cliente,
       prenda: prenda,
